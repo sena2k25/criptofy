@@ -14,6 +14,8 @@ export function AuthModal() {
   const s = useStore();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   if (!s.authOpen) return null;
   const register = s.authOpen === "register";
   return (
@@ -23,26 +25,59 @@ export function AuthModal() {
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault();
-          if (!email.includes("@")) return;
-          s.login(email, register ? name : undefined);
+          const err = s.login(email, password, {
+            name: register ? name : undefined,
+            mode: register ? "register" : "login",
+          });
+          if (err) setError(err);
         }}
       >
         <h3>{register ? "Abrir conta" : "Entrar"}</h3>
-        <p className="muted">A CRIPTOFY guarda seu portfólio neste aparelho.</p>
+        <p className="muted">
+          {register ? "Preencha nome, e-mail e senha para criar sua conta." : "Entre com e-mail e senha da sua conta."}
+        </p>
         {register ? (
           <label className="field">
             <span>Nome</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Seu nome" />
+            <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Seu nome" autoComplete="name" />
           </label>
         ) : null}
         <label className="field">
           <span>E-mail</span>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="voce@email.com" />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            placeholder="voce@email.com"
+            autoComplete="email"
+          />
         </label>
+        <label className="field">
+          <span>Senha</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={4}
+            placeholder="Mínimo 4 caracteres"
+            autoComplete={register ? "new-password" : "current-password"}
+          />
+        </label>
+        {error ? <p className="warn">{error}</p> : null}
         <button className="btn btn-gold btn-lg" style={{ width: "100%" }} type="submit">
-          {register ? "Começar a investir" : "Entrar"}
+          {register ? "Criar conta" : "Entrar"}
         </button>
-        <button type="button" className="linkish" onClick={() => s.setAuthOpen(register ? "login" : "register")}>
+        <button
+          type="button"
+          className="linkish"
+          onClick={() => {
+            setError("");
+            setPassword("");
+            s.setAuthOpen(register ? "login" : "register");
+          }}
+        >
           {register ? "Já tenho conta" : "Criar conta"}
         </button>
       </form>

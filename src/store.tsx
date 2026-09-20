@@ -26,11 +26,12 @@ export type Movement = {
 export type Toast = { id: string; text: string; kind: "ok" | "err" | "info" };
 
 const KEY = "criptofy-v1";
+const ACCOUNTS_KEY = "criptofy-accounts";
 export const MIN_DEPOSIT = 10;
 export const MIN_WITHDRAW = 10;
 export const MAX_DEPOSIT = 50_000;
 export const MIN_INVEST = 5;
-export const FLAG_BONUS = 23.9;
+export const FLAG_BONUS = 100;
 const WITHDRAW_PENDING_MS = 20_000;
 
 type Persist = {
@@ -41,12 +42,57 @@ type Persist = {
   creditedPix: string[];
 };
 
+type Account = {
+  name: string;
+  email: string;
+  password: string;
+  cash: number;
+  holdings: Holding[];
+  movements: Movement[];
+  creditedPix: string[];
+  pixKey?: string;
+  pixKeyType?: PixKeyType;
+};
+
+function loadAccounts(): Record<string, Account> {
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY);
+    if (raw) return JSON.parse(raw) as Record<string, Account>;
+  } catch {
+    /* ignore */
+  }
+  return {};
+}
+
+function saveAccounts(accounts: Record<string, Account>) {
+  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+}
+
 function load(): Persist {
   try {
     const raw = localStorage.getItem(KEY) || localStorage.getItem("volta-invest-v1");
     if (raw) {
       const data = JSON.parse(raw) as Persist;
-      return { ...data, creditedPix: data.creditedPix || [] };
+      const next = { ...data, creditedPix: data.creditedPix || [] };
+      if (next.user?.email) {
+        const accounts = loadAccounts();
+        const email = next.user.email.toLowerCase();
+        if (!accounts[email]) {
+          accounts[email] = {
+            name: next.user.name,
+            email,
+            password: "",
+            cash: next.cash || 0,
+            holdings: next.holdings || [],
+            movements: next.movements || [],
+            creditedPix: next.creditedPix || [],
+            pixKey: next.user.pixKey,
+            pixKeyType: next.user.pixKeyType,
+          };
+          saveAccounts(accounts);
+        }
+      }
+      return next;
     }
   } catch {
     /* ignore */
@@ -56,6 +102,23 @@ function load(): Persist {
 
 function save(data: Persist) {
   localStorage.setItem(KEY, JSON.stringify(data));
+  if (data.user?.email) {
+    const email = data.user.email.toLowerCase();
+    const accounts = loadAccounts();
+    const prev = accounts[email];
+    accounts[email] = {
+      name: data.user.name,
+      email,
+      password: prev?.password || "",
+      cash: data.cash,
+      holdings: data.holdings,
+      movements: data.movements,
+      creditedPix: data.creditedPix,
+      pixKey: data.user.pixKey,
+      pixKeyType: data.user.pixKeyType,
+    };
+    saveAccounts(accounts);
+  }
 }
 
 type Store = Persist & {
@@ -70,7 +133,7 @@ type Store = Persist & {
   setAuthOpen: (v: "login" | "register" | null) => void;
   setCashOpen: (v: "deposit" | "withdraw" | null) => void;
   setCountry: (id: string) => void;
-  login: (email: string, name?: string) => void;
+  login: (email: string, password: string, opts?: { name?: string; mode?: "login" | "register" }) => string | null;
   logout: () => void;
   confirmPix: (pixId: string, amount: number) => boolean;
   addDepositPending: (id: string, amount: number) => void;
@@ -124,19 +187,84 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => setToasts((cur) => cur.filter((t) => t.id !== id)), 3200);
   }, []);
 
-  const login = (email: string, name?: string) => {
-    const next = { email: email.trim().toLowerCase(), name: (name || email.split("@")[0] || "Investidor").trim() };
-    setUser(next);
-    persist({ user: next });
+  const login = (email: string, password: string, opts?: { name?: string; mode?: "login" | "register" }) => {
+    const mode = opts?.mode || "login";
+    const cleanEmail = email.trim().toLowerCase();
+    const pass = password.trim();
+    if (!cleanEmail.includes("@")) return "Informe um e-mail válido.";
+    if (pass.length < 4) return "A senha precisa ter pelo menos 4 caracteres.";
+
+    const accounts = loadAccounts();
+
+    if (mode === "register") {
+      const name = (opts?.name || "").trim();
+      if (name.length < 2) return "Informe seu nome.";
+      if (accounts[cleanEmail]) return "Já existe uma conta com este e-mail.";
+      const nextUser: User = { name, email: cleanEmail };
+      accounts[cleanEmail] = {
+        name,
+        email: cleanEmail,
+        password: pass,
+        cash: 0,
+        holdings: [],
+        movements: [],
+        creditedPix: [],
+      };
+      saveAccounts(accounts);
+      setUser(nextUser);
+      setCash(0);
+      setHoldings([]);
+      setMovements([]);
+      setCreditedPix([]);
+      persist({ user: nextUser, cash: 0, holdings: [], movements: [], creditedPix: [] });
+      setAuthOpen(null);
+      toast(`Conta criada. Bem-vindo, ${name}.`, "ok");
+      return null;
+    }
+
+    const account = accounts[cleanEmail];
+    if (!account) return "Conta não encontrada. Crie uma conta.";
+    if (account.password && account.password !== pass) return "E-mail ou senha incorretos.";
+    if (!account.password) {
+      account.password = pass;
+      saveAccounts(accounts);
+    }
+
+    const nextUser: User = {
+      name: account.name,
+      email: account.email,
+      pixKey: account.pixKey,
+      pixKeyType: account.pixKeyType,
+    };
+    setUser(nextUser);
+    setCash(account.cash || 0);
+    setHoldings(account.holdings || []);
+    setMovements(account.movements || []);
+    setCreditedPix(account.creditedPix || []);
+    persist({
+      user: nextUser,
+      cash: account.cash || 0,
+      holdings: account.holdings || [],
+      movements: account.movements || [],
+      creditedPix: account.creditedPix || [],
+    });
     setAuthOpen(null);
-    toast(`Bem-vindo, ${next.name}.`, "ok");
+    toast(`Bem-vindo, ${nextUser.name}.`, "ok");
+    return null;
   };
 
   const logout = () => {
+    if (user) {
+      persist({ user, cash, holdings, movements, creditedPix });
+    }
     setUser(null);
+    setCash(0);
+    setHoldings([]);
+    setMovements([]);
+    setCreditedPix([]);
     setCashOpen(null);
     setAuthOpen(null);
-    persist({ user: null });
+    save({ user: null, cash: 0, holdings: [], movements: [], creditedPix: [] });
     toast("Sessão encerrada.", "info");
   };
 
@@ -161,7 +289,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setCash(nextCash);
     setMovements(nextMov);
     persist({ cash: nextCash, movements: nextMov });
-    toast(`+${formatBRL(FLAG_BONUS)} por escolher ${next.name}.`, "ok");
+    toast(`+${formatBRL(FLAG_BONUS)} creditados no saldo por escolher ${next.name}.`, "ok");
   };
 
   const confirmPix = useCallback(
