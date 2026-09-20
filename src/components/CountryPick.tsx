@@ -1,22 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { COUNTRIES, countryById } from "../lib/currency";
 import { FLAG_BONUS, useStore } from "../store";
-
-function Flag({ id }: { id: string }) {
-  const country = countryById(id);
-  const [broken, setBroken] = useState(false);
-  return (
-    <span className="fx-flag">
-      {broken ? (
-        <span className="fx-flag-emoji" aria-hidden>
-          {country.flag}
-        </span>
-      ) : (
-        <img src={`https://flagcdn.com/w80/${id}.png`} alt="" onError={() => setBroken(true)} />
-      )}
-    </span>
-  );
-}
+import { Flag } from "./Flag";
 
 export function CountryPick() {
   const { country, setCountry, money } = useStore();
@@ -25,19 +11,26 @@ export function CountryPick() {
   const current = countryById(country);
 
   useEffect(() => {
+    if (!open) return;
     const hide = (e: Event) => {
-      if (!box.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      if (box.current?.contains(t) || t.closest(".fx-menu") || t.closest(".fx-sheet-bg")) return;
+      setOpen(false);
     };
-    document.addEventListener("pointerdown", hide);
-    return () => document.removeEventListener("pointerdown", hide);
-  }, []);
+    const timer = window.setTimeout(() => document.addEventListener("pointerdown", hide), 50);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("pointerdown", hide);
+    };
+  }, [open]);
 
   return (
     <div className={`fx-pick${open ? " open" : ""}`} ref={box}>
       <button
         type="button"
         className={`fx-btn${open ? " open" : ""}`}
-        aria-label="Escolher país"
+        aria-label={`País: ${current.name}`}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
@@ -47,28 +40,34 @@ export function CountryPick() {
           ▾
         </span>
       </button>
-      {open ? (
-        <div className="fx-menu" role="listbox" aria-label="País e moeda">
-          <div className="fx-menu-head">País e moeda · ganhe {money(FLAG_BONUS)}</div>
-          {COUNTRIES.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              role="option"
-              aria-selected={c.id === country}
-              className={c.id === country ? "on" : ""}
-              onClick={() => {
-                setCountry(c.id);
-                setOpen(false);
-              }}
-            >
-              <Flag id={c.id} />
-              <span className="fx-name">{c.name}</span>
-              <small>{c.currency}</small>
-            </button>
-          ))}
-        </div>
-      ) : null}
+      {open
+        ? createPortal(
+            <>
+              <button type="button" className="fx-sheet-bg" aria-label="Fechar países" onClick={() => setOpen(false)} />
+              <div className="fx-menu" role="listbox" aria-label="País e moeda" onPointerDown={(e) => e.stopPropagation()}>
+                <div className="fx-menu-head">País e moeda · ganhe {money(FLAG_BONUS)}</div>
+                {COUNTRIES.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    role="option"
+                    aria-selected={c.id === country}
+                    className={c.id === country ? "on" : ""}
+                    onClick={() => {
+                      setCountry(c.id);
+                      setOpen(false);
+                    }}
+                  >
+                    <Flag id={c.id} />
+                    <span className="fx-name">{c.name}</span>
+                    <small>{c.currency}</small>
+                  </button>
+                ))}
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
