@@ -134,8 +134,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
-    setCashOpen(null);
-    setAuthOpen(null);
     persist({ user: null });
     toast("Sessão encerrada.", "info");
   };

@@ -21,16 +21,12 @@ export function AuthModal() {
       <form
         className="modal"
         onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault();
           if (!email.includes("@")) return;
           s.login(email, register ? name : undefined);
         }}
       >
-        <button type="button" className="modal-x" aria-label="Fechar" onClick={() => s.setAuthOpen(null)}>
-          ×
-        </button>
         <h3>{register ? "Abrir conta" : "Entrar"}</h3>
         <p className="muted">A CRIPTOFY guarda seu portfólio neste aparelho.</p>
         {register ? (
@@ -105,13 +101,7 @@ export function CashModal() {
       setCopied(false);
       setPixType(s.user?.pixKeyType || "cpf");
       setPixKey(s.user?.pixKey || "");
-      return;
     }
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
   }, [s.cashOpen, s.user?.pixKey, s.user?.pixKeyType]);
 
   useEffect(() => {
@@ -163,7 +153,6 @@ export function CashModal() {
       <form
         className="modal wallet-modal"
         onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
         onSubmit={async (e) => {
           e.preventDefault();
           if (out) {
@@ -177,9 +166,6 @@ export function CashModal() {
           await startDeposit(value);
         }}
       >
-        <button type="button" className="modal-x" aria-label="Fechar" onClick={() => s.setCashOpen(null)}>
-          ×
-        </button>
         <h3>{out ? "Saque via Pix" : "Depósito via Pix"}</h3>
         {out ? (
           <p className="muted">O saque sai via Pix para a chave informada. Saldo: {s.money(s.cash)}</p>
