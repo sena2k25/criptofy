@@ -28,32 +28,56 @@ export function Header() {
           ))}
         </nav>
         <div className="util">
+          {s.user ? <span className="cash">{s.money(s.cash)}</span> : null}
+          <CountryPick />
           {s.user ? (
-            <div className="balance-pill">
-              <span className="cash">{s.money(s.cash)}</span>
-              <button type="button" className="btn btn-gold btn-sm" onClick={() => s.setCashOpen("deposit")}>
+            <>
+              <button type="button" className="btn btn-gold btn-sm hide-sm" onClick={() => s.setCashOpen("deposit")}>
                 Depósito
               </button>
-              <CountryPick />
               <button type="button" className="btn btn-ghost btn-sm hide-sm" onClick={() => s.setCashOpen("withdraw")}>
                 Saque
               </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={s.logout}>
+              <button type="button" className="btn btn-ghost btn-sm hide-sm" onClick={s.logout}>
                 Sair
               </button>
-            </div>
+            </>
           ) : (
             <>
-              <CountryPick />
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => s.setAuthOpen("login")}>
+              <button type="button" className="btn btn-ghost btn-sm hide-sm" onClick={() => s.setAuthOpen("login")}>
                 Entrar
               </button>
-              <button type="button" className="btn btn-gold btn-sm" onClick={() => s.setAuthOpen("register")}>
+              <button type="button" className="btn btn-gold btn-sm hide-sm" onClick={() => s.setAuthOpen("register")}>
                 Criar conta
               </button>
             </>
           )}
         </div>
+      </div>
+
+      <div className="mobile-bar wrap">
+        {s.user ? (
+          <>
+            <button type="button" className="btn btn-gold" onClick={() => s.setCashOpen("deposit")}>
+              Depósito
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => s.setCashOpen("withdraw")}>
+              Saque
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={s.logout}>
+              Sair
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="btn btn-ghost" onClick={() => s.setAuthOpen("login")}>
+              Entrar
+            </button>
+            <button type="button" className="btn btn-gold mobile-span" onClick={() => s.setAuthOpen("register")}>
+              Criar conta
+            </button>
+          </>
+        )}
       </div>
     </header>
   );

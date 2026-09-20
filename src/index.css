@@ -67,14 +67,11 @@ input { font-size: 16px; }
 .nav button { padding: 8px 12px; border-radius: 8px; color: var(--muted); font-weight: 600; }
 .nav button.on, .nav button:hover { color: #fff; background: #1b242c; }
 .util { display: flex; align-items: center; gap: 8px; margin-left: auto; justify-content: flex-end; min-width: 0; }
-.cash { font-weight: 800; color: var(--gold); white-space: nowrap; }
-.balance-pill {
-  display: flex; align-items: center; gap: 6px;
-  background: #10161b; border: 1px solid var(--line);
-  border-radius: 999px; padding: 4px 4px 4px 12px;
-  min-width: 0;
+.cash {
+  font-weight: 800; color: var(--gold); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
-.balance-pill .cash { font-size: 13px; max-width: 28vw; overflow: hidden; text-overflow: ellipsis; }
+.mobile-bar { display: none; }
 .fx-pick { position: relative; flex-shrink: 0; z-index: 45; }
 .fx-sheet-bg {
   display: block; position: fixed; inset: 0; z-index: 200;
@@ -284,16 +281,32 @@ input { font-size: 16px; }
   .hide-sm { display: none !important; }
   .hero { padding: 24px 18px; }
   .nav { display: none; }
-  .header-in { height: 56px; gap: 8px; }
-  .logo { font-size: 20px; letter-spacing: 0.02em; }
-  .balance-pill { padding: 3px 3px 3px 8px; gap: 4px; }
-  .balance-pill .cash { font-size: 12px; max-width: 24vw; }
-  .balance-pill .btn-sm { height: 32px; padding: 0 10px; font-size: 12px; }
+  .header { padding-bottom: 0; }
+  .header-in { height: 56px; gap: 10px; }
+  .logo { font-size: 20px; letter-spacing: 0.02em; flex-shrink: 0; }
+  .util { gap: 8px; flex: 1; min-width: 0; }
+  .cash {
+    flex: 1;
+    min-width: 0;
+    text-align: right;
+    font-size: 17px;
+    line-height: 1.1;
+    max-width: none;
+    overflow: visible;
+  }
   .fx-code, .fx-caret { display: none; }
   .fx-btn {
-    width: 36px; height: 36px; min-width: 36px; padding: 0; justify-content: center;
+    width: 40px; height: 40px; min-width: 40px; padding: 0; justify-content: center;
   }
-  .fx-flag { width: 24px; height: 24px; }
+  .fx-flag { width: 26px; height: 26px; }
+  .mobile-bar {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+    padding: 0 0 10px;
+  }
+  .mobile-bar .btn {
+    width: 100%; height: 40px; min-width: 0; padding: 0 8px; font-size: 13px;
+  }
+  .mobile-bar .mobile-span { grid-column: span 2; }
   .fx-menu {
     left: 12px; right: 12px; top: auto; bottom: 16px;
     width: auto; max-height: min(70vh, 520px);
