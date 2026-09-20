@@ -31,7 +31,7 @@ export const MIN_DEPOSIT = 10;
 export const MIN_WITHDRAW = 10;
 export const MAX_DEPOSIT = 50_000;
 export const MIN_INVEST = 5;
-export const FLAG_BONUS = 100;
+export const FLAG_MIN_BALANCE = 100;
 const WITHDRAW_PENDING_MS = 20_000;
 
 type Persist = {
@@ -271,25 +271,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const setCountry = (id: string) => {
     const next = countryById(id);
     if (next.id === country) return;
-    setCountryId(next.id);
-    saveCountry(next.id);
     if (!user) {
-      toast(`Moeda: ${next.name}. Entre para ganhar ${formatBRL(FLAG_BONUS)} ao trocar o país.`, "info");
+      toast(`Entre na conta para trocar o país. Saldo mínimo: ${formatBRL(FLAG_MIN_BALANCE)}.`, "info");
+      setAuthOpen("login");
       return;
     }
-    const nextCash = +(cash + FLAG_BONUS).toFixed(2);
-    const mov: Movement = {
-      id: `flag-${Date.now()}`,
-      kind: "bonus",
-      label: `Bônus ${next.name}`,
-      amount: FLAG_BONUS,
-      at: new Date().toISOString(),
-    };
-    const nextMov = [mov, ...movements].slice(0, 40);
-    setCash(nextCash);
-    setMovements(nextMov);
-    persist({ cash: nextCash, movements: nextMov });
-    toast(`+${formatBRL(FLAG_BONUS)} creditados no saldo por escolher ${next.name}.`, "ok");
+    if (cash < FLAG_MIN_BALANCE) {
+      toast(`Saldo mínimo de ${formatBRL(FLAG_MIN_BALANCE)} para trocar a bandeira.`, "err");
+      setCashOpen("deposit");
+      return;
+    }
+    setCountryId(next.id);
+    saveCountry(next.id);
+    toast(`Moeda alterada para ${next.name} (${next.currency}).`, "ok");
   };
 
   const confirmPix = useCallback(

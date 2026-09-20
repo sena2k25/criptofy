@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { COUNTRIES, countryById } from "../lib/currency";
-import { FLAG_BONUS, useStore } from "../store";
+import { FLAG_MIN_BALANCE, useStore } from "../store";
 import { Flag } from "./Flag";
 
 export function CountryPick() {
@@ -45,7 +45,7 @@ export function CountryPick() {
             <>
               <button type="button" className="fx-sheet-bg" aria-label="Fechar países" onClick={() => setOpen(false)} />
               <div className="fx-menu" role="listbox" aria-label="País e moeda" onPointerDown={(e) => e.stopPropagation()}>
-                <div className="fx-menu-head">País e moeda · ganhe {money(FLAG_BONUS)}</div>
+                <div className="fx-menu-head">País e moeda · mín. {money(FLAG_MIN_BALANCE)}</div>
                 {COUNTRIES.map((c) => (
                   <button
                     key={c.id}
