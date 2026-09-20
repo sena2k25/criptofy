@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CoinIcon } from "../components/CoinIcon";
+import { CountryPick } from "../components/CountryPick";
 import { fetchPrices, formatUnits, LIVE_MS } from "../lib/crypto";
 import { useStore } from "../store";
 
@@ -69,15 +70,21 @@ export function Wallet() {
           </b>
         </article>
       </div>
-      <div className="row-actions">
-        <button className="btn btn-gold" onClick={() => s.setCashOpen("deposit")}>
-          Depósito
-        </button>
-        <button className="btn btn-ghost" onClick={() => s.setCashOpen("withdraw")}>
-          Saque
-        </button>
-        <button className="btn btn-ghost" onClick={() => s.setPage("market")}>
+      <div className="cash-panel">
+        <CountryPick variant="wide" />
+        <div className="cash-row">
+          <button type="button" className="btn btn-gold" onClick={() => s.setCashOpen("deposit")}>
+            Depósito
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => s.setCashOpen("withdraw")}>
+            Saque
+          </button>
+        </div>
+        <button type="button" className="btn btn-ghost" onClick={() => s.setPage("market")}>
           Comprar cripto
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={s.logout}>
+          Sair
         </button>
       </div>
       <h2>Posições</h2>
