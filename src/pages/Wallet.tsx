@@ -112,8 +112,14 @@ export function Wallet() {
           s.movements.map((m) => (
             <div key={m.id} className="move">
               <div>
-                <strong>{m.label}</strong>
-                <small>{new Date(m.at).toLocaleString("pt-BR")}</small>
+                <strong>
+                  {m.label}
+                  {m.status === "pending" ? " · pendente" : ""}
+                </strong>
+                <small>
+                  {new Date(m.at).toLocaleString("pt-BR")}
+                  {m.pixKey ? ` · ${m.pixKey}` : ""}
+                </small>
               </div>
               <b className={m.amount >= 0 ? "up" : "down"}>
                 {m.amount >= 0 ? "+" : ""}

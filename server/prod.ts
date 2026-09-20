@@ -3,9 +3,12 @@ import { stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 import { handleCrypto } from "./crypto";
+import { handlePix } from "./nexus";
 
-const dist = resolve(process.cwd(), "dist");
+const root = process.cwd();
+const dist = resolve(root, "dist");
 const port = Number(process.env.PORT || 5273);
+const mode = process.env.NODE_ENV === "development" ? "development" : "production";
 
 const MIME: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
@@ -26,6 +29,7 @@ function safeFile(urlPath: string) {
 
 const server = createServer(async (req, res) => {
   try {
+    if (await handlePix(req, res, root, mode)) return;
     if (await handleCrypto(req, res)) return;
     let file = safeFile(req.url || "/");
     if (!file) {

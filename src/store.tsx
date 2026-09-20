@@ -3,7 +3,8 @@ import { formatBRL, formatPrice } from "./lib/crypto";
 import { FALLBACK_RATES, countryById, fetchRates, formatMoney, loadCountry, saveCountry } from "./lib/currency";
 
 export type Page = "home" | "market" | "asset" | "wallet";
-export type User = { name: string; email: string };
+export type PixKeyType = "cpf" | "phone" | "email" | "random";
+export type User = { name: string; email: string; pixKey?: string; pixKeyType?: PixKeyType };
 export type Holding = {
   id: string;
   symbol: string;
@@ -18,30 +19,39 @@ export type Movement = {
   label: string;
   amount: number;
   at: string;
+  status?: "pending" | "approved";
+  pixKey?: string;
+  approveAt?: string;
 };
 export type Toast = { id: string; text: string; kind: "ok" | "err" | "info" };
 
 const KEY = "criptofy-v1";
 export const MIN_DEPOSIT = 10;
 export const MIN_WITHDRAW = 10;
+export const MAX_DEPOSIT = 50_000;
 export const MIN_INVEST = 5;
 export const FLAG_BONUS = 23.9;
+const WITHDRAW_PENDING_MS = 20_000;
 
 type Persist = {
   user: User | null;
   cash: number;
   holdings: Holding[];
   movements: Movement[];
+  creditedPix: string[];
 };
 
 function load(): Persist {
   try {
     const raw = localStorage.getItem(KEY) || localStorage.getItem("volta-invest-v1");
-    if (raw) return JSON.parse(raw) as Persist;
+    if (raw) {
+      const data = JSON.parse(raw) as Persist;
+      return { ...data, creditedPix: data.creditedPix || [] };
+    }
   } catch {
     /* ignore */
   }
-  return { user: null, cash: 0, holdings: [], movements: [] };
+  return { user: null, cash: 0, holdings: [], movements: [], creditedPix: [] };
 }
 
 function save(data: Persist) {
@@ -62,8 +72,9 @@ type Store = Persist & {
   setCountry: (id: string) => void;
   login: (email: string, name?: string) => void;
   logout: () => void;
-  deposit: (amount: number) => boolean;
-  withdraw: (amount: number) => boolean;
+  confirmPix: (pixId: string, amount: number) => boolean;
+  addDepositPending: (id: string, amount: number) => void;
+  withdraw: (amount: number, pixKey: string, pixKeyType: PixKeyType) => boolean;
   buy: (coin: { id: string; symbol: string; name: string; image: string; price: number }, amount: number) => boolean;
   sell: (coinId: string, amount: number, price: number) => boolean;
   toast: (text: string, kind?: Toast["kind"]) => void;
@@ -79,6 +90,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [cash, setCash] = useState(initial.cash);
   const [holdings, setHoldings] = useState<Holding[]>(initial.holdings);
   const [movements, setMovements] = useState<Movement[]>(initial.movements);
+  const [creditedPix, setCreditedPix] = useState<string[]>(initial.creditedPix || []);
   const [page, setPage] = useState<Page>("home");
   const [assetId, setAssetId] = useState("bitcoin");
   const [authOpen, setAuthOpen] = useState<"login" | "register" | null>(null);
@@ -100,9 +112,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         cash: patch.cash !== undefined ? patch.cash : cash,
         holdings: patch.holdings !== undefined ? patch.holdings : holdings,
         movements: patch.movements !== undefined ? patch.movements : movements,
+        creditedPix: patch.creditedPix !== undefined ? patch.creditedPix : creditedPix,
       });
     },
-    [user, cash, holdings, movements],
+    [user, cash, holdings, movements, creditedPix],
   );
 
   const toast = useCallback((text: string, kind: Toast["kind"] = "ok") => {
@@ -149,35 +162,85 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     toast(`+${formatBRL(FLAG_BONUS)} por escolher ${next.name}.`, "ok");
   };
 
-  const deposit = (amount: number) => {
-    if (!user) {
-      setAuthOpen("register");
-      return false;
-    }
-    if (!Number.isFinite(amount) || amount < MIN_DEPOSIT) {
-      toast(`Depósito mínimo: ${formatBRL(MIN_DEPOSIT)}.`, "err");
-      return false;
-    }
-    const next = +(cash + amount).toFixed(2);
-    const mov: Movement = {
-      id: `d-${Date.now()}`,
+  const confirmPix = useCallback(
+    (pixId: string, amount: number) => {
+      if (!pixId || creditedPix.includes(pixId)) return false;
+      const next = +(cash + amount).toFixed(2);
+      const ids = [...creditedPix, pixId];
+      const txs = movements.some((m) => m.id === pixId)
+        ? movements.map((m) => (m.id === pixId ? { ...m, status: "approved" as const } : m))
+        : [
+            {
+              id: pixId,
+              kind: "deposit" as const,
+              label: "Depósito Pix",
+              amount,
+              at: new Date().toISOString(),
+              status: "approved" as const,
+            },
+            ...movements,
+          ];
+      setCash(next);
+      setCreditedPix(ids);
+      setMovements(txs.slice(0, 40));
+      persist({ cash: next, creditedPix: ids, movements: txs.slice(0, 40) });
+      toast(`Pix de ${formatBRL(amount)} confirmado.`, "ok");
+      return true;
+    },
+    [cash, creditedPix, movements, persist, toast],
+  );
+
+  const addDepositPending = (id: string, amount: number) => {
+    if (movements.some((m) => m.id === id)) return;
+    const tx: Movement = {
+      id,
       kind: "deposit",
-      label: "Depósito em reais",
+      label: "Depósito Pix",
       amount,
       at: new Date().toISOString(),
+      status: "pending",
     };
-    const nextMov = [mov, ...movements].slice(0, 40);
-    setCash(next);
-    setMovements(nextMov);
-    persist({ cash: next, movements: nextMov });
-    setCashOpen(null);
-    toast(`Depósito de ${formatBRL(amount)} na conta.`, "ok");
-    return true;
+    const next = [tx, ...movements].slice(0, 40);
+    setMovements(next);
+    persist({ movements: next });
   };
 
-  const withdraw = (amount: number) => {
+  const approveMovement = useCallback(
+    (id: string) => {
+      setMovements((cur) => {
+        const next = cur.map((m) => (m.id === id && m.status === "pending" ? { ...m, status: "approved" as const } : m));
+        persist({ movements: next });
+        const done = cur.find((m) => m.id === id && m.status === "pending");
+        if (done?.kind === "withdraw") toast("Saque Pix aprovado.", "ok");
+        return next;
+      });
+    },
+    [persist, toast],
+  );
+
+  useEffect(() => {
+    const now = Date.now();
+    const timers = movements
+      .filter((m) => m.kind === "withdraw" && m.status === "pending" && m.approveAt)
+      .map((m) => {
+        const left = new Date(m.approveAt!).getTime() - now;
+        if (left <= 0) {
+          approveMovement(m.id);
+          return 0;
+        }
+        return window.setTimeout(() => approveMovement(m.id), left);
+      });
+    return () => timers.forEach((t) => t && window.clearTimeout(t));
+  }, [movements, approveMovement]);
+
+  const withdraw = (amount: number, pixKey: string, pixKeyType: PixKeyType) => {
+    const key = pixKey.trim();
     if (!user) {
       setAuthOpen("login");
+      return false;
+    }
+    if (!key) {
+      toast("Informe a chave Pix para receber o saque.", "err");
       return false;
     }
     if (!Number.isFinite(amount) || amount < MIN_WITHDRAW) {
@@ -189,19 +252,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return false;
     }
     const next = +(cash - amount).toFixed(2);
+    const nextUser = { ...user, pixKey: key, pixKeyType };
     const mov: Movement = {
       id: `w-${Date.now()}`,
       kind: "withdraw",
-      label: "Saque em reais",
+      label: "Saque Pix",
       amount: -amount,
       at: new Date().toISOString(),
+      status: "pending",
+      pixKey: key,
+      approveAt: new Date(Date.now() + WITHDRAW_PENDING_MS).toISOString(),
     };
     const nextMov = [mov, ...movements].slice(0, 40);
     setCash(next);
+    setUser(nextUser);
     setMovements(nextMov);
-    persist({ cash: next, movements: nextMov });
+    persist({ cash: next, user: nextUser, movements: nextMov });
     setCashOpen(null);
-    toast(`Saque de ${formatBRL(amount)} realizado.`, "ok");
+    toast(`Saque de ${formatBRL(amount)} pendente para ${key}.`, "ok");
     return true;
   };
 
@@ -305,7 +373,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setCountry,
       login,
       logout,
-      deposit,
+      confirmPix,
+      addDepositPending,
       withdraw,
       buy,
       sell,
@@ -313,7 +382,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       money: (v: number) => formatMoney(v, country, fx),
       price: (v: number) => formatPrice(v, country, fx),
     }),
-    [user, cash, holdings, movements, page, assetId, authOpen, cashOpen, country, fx, toasts, persist, toast],
+    [user, cash, holdings, movements, page, assetId, authOpen, cashOpen, country, fx, toasts, persist, toast, confirmPix],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

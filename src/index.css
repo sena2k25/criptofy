@@ -241,6 +241,30 @@ input { font-size: 16px; }
 .toast { background: #1b242c; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; min-width: 220px; }
 .toast.ok { border-color: var(--up); }
 .toast.err { border-color: var(--down); }
+.warn { color: var(--down); font-size: 13px; font-weight: 600; }
+.wallet-modal { max-height: min(88vh, 720px); overflow: auto; }
+.pix-key-box { margin-top: 4px; }
+.pix { word-break: break-all; font-size: 12px; color: var(--muted); background: #10161b; border-radius: 10px; padding: 10px; }
+.pix-box { display: grid; gap: 12px; margin: 12px 0; justify-items: center; }
+.pix-qr-wrap { position: relative; width: 220px; border-radius: 16px; }
+.pix-qr {
+  width: 220px; height: 220px; object-fit: contain;
+  background: #fff; border-radius: 12px; padding: 10px; display: block;
+}
+.pix-qr-fallback { background: #fff; }
+.pix-qr-wrap.is-paid .pix-qr { filter: grayscale(0.15) brightness(0.86); box-shadow: 0 0 0 3px var(--up); }
+.pix-verified {
+  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center;
+  gap: 6px; border-radius: 12px; background: rgba(5, 33, 15, 0.42); color: #fff; text-align: center;
+}
+.pix-verified-seal {
+  width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--up); color: #05210f; font-size: 28px; font-weight: 800;
+}
+.pix-verified strong { font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; }
+.pix-verified em { font-style: normal; font-size: 12px; font-weight: 700; color: #b8ffd2; }
+.pix-wait { text-align: center; color: var(--gold); }
+.pix-ok, .pix-ok-copy { text-align: center; color: var(--up); font-weight: 700; }
 
 @media (max-width: 800px) {
   .coin-grid, .steps, .stats { grid-template-columns: 1fr; }

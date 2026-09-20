@@ -88,7 +88,7 @@ export function Home() {
           <article>
             <span>01</span>
             <h3>Deposite reais</h3>
-            <p>Faça um depósito na conta. Esse dinheiro vira poder de compra.</p>
+            <p>Faça um depósito via Pix. O saldo entra quando o pagamento confirmar.</p>
           </article>
           <article>
             <span>02</span>
